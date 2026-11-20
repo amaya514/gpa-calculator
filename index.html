@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPA Calculator</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:32px 16px; }
+  main { width:100%; max-width:640px; }
+  h1 { margin:0 0 4px; font-size:1.8rem; }
+  p.sub { margin:0 0 24px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .row { display:grid; grid-template-columns:1fr 80px 90px 36px; gap:8px; margin-bottom:8px; }
+  .head { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; }
+  input, select { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--text); font-size:1rem; }
+  button { cursor:pointer; border:none; border-radius:8px; font-size:1rem; }
+  .del { background:transparent; color:var(--muted); font-size:1.2rem; }
+  .del:hover { color:#f87171; }
+  .add { background:transparent; border:1px dashed var(--line); color:var(--muted); width:100%; padding:10px; margin-top:4px; }
+  .add:hover { color:var(--text); border-color:var(--muted); }
+  .result { display:flex; justify-content:space-between; align-items:center; }
+  .gpa { font-size:2.6rem; font-weight:700; color:var(--accent); }
+  .cls { color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; color:var(--muted); }
+  td { padding:4px 0; }
+  footer { color:var(--muted); font-size:.8rem; text-align:center; margin-top:24px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎓 GPA Calculator</h1>
+  <p class="sub">Add your modules, credits and grades to see your GPA. Saved in your browser automatically.</p>
+
+  <div class="card">
+    <div class="row head"><span>Module</span><span>Credits</span><span>Grade</span><span></span></div>
+    <div id="rows"></div>
+    <button class="add" id="add">+ Add module</button>
+  </div>
+
+  <div class="card result">
+    <div>
+      <div class="cls">Your GPA</div>
+      <div class="gpa" id="gpa">0.00</div>
+    </div>
+    <div style="text-align:right">
+      <div class="cls" id="credits">0 credits</div>
+      <div id="class"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>Grade scale (4.0)</strong>
+    <table id="scale"></table>
+  </div>
+
+  <footer>Made by <a href="https://github.com/amaya514">Amaya Payagala</a></footer>
+</main>
+
+<script>
+const SCALE = { "A+":4.0, "A":4.0, "A-":3.7, "B+":3.3, "B":3.0, "B-":2.7, "C+":2.3, "C":2.0, "C-":1.7, "D+":1.3, "D":1.0, "E":0.0 };
+const KEY = "gpa-calculator-modules";
+let modules;
+try { modules = JSON.parse(localStorage.getItem(KEY)) || null; } catch { modules = null; }
+if (!modules) modules = [{ name:"", credits:3, grade:"A" }];
+
+const rowsEl = document.getElementById("rows");
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(modules)); } catch {} }
+
+function render() {
+  rowsEl.innerHTML = "";
+  modules.forEach((m, i) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <input placeholder="e.g. Programming 1" value="${m.name.replace(/"/g,"&quot;")}">
+      <input type="number" min="0" step="0.5" value="${m.credits}">
+      <select>${Object.keys(SCALE).map(g => `<option ${g===m.grade?"selected":""}>${g}</option>`).join("")}</select>
+      <button class="del" title="Remove">✕</button>`;
+    const [name, credits, grade, del] = row.children;
+    name.oninput = e => { m.name = e.target.value; save(); };
+    credits.oninput = e => { m.credits = parseFloat(e.target.value) || 0; update(); };
+    grade.onchange = e => { m.grade = e.target.value; update(); };
+    del.onclick = () => { modules.splice(i, 1); render(); };
+    rowsEl.appendChild(row);
+  });
+  update();
+}
+
+function update() {
+  let points = 0, credits = 0;
+  modules.forEach(m => { credits += m.credits; points += m.credits * SCALE[m.grade]; });
+  const gpa = credits ? points / credits : 0;
+  document.getElementById("gpa").textContent = gpa.toFixed(2);
+  document.getElementById("credits").textContent = `${credits} credits`;
+  document.getElementById("class").textContent =
+    !credits ? "" : gpa >= 3.7 ? "First Class 🏆" : gpa >= 3.3 ? "Second Upper" : gpa >= 3.0 ? "Second Lower" : gpa >= 2.0 ? "Pass" : "Below pass";
+  save();
+}
+
+document.getElementById("add").onclick = () => { modules.push({ name:"", credits:3, grade:"A" }); render(); };
+
+document.getElementById("scale").innerHTML = Object.entries(SCALE)
+  .map(([g, p]) => `<tr><td>${g}</td><td style="text-align:right">${p.toFixed(1)}</td></tr>`).join("");
+
+render();
+</script>
+</body>
+</html>
